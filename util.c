@@ -62,7 +62,7 @@ DIR *opendir_error_check(const char *name) {
     return dir;
 }
 
-/*void lstat_with_error(const char *path, struct stat *buf) {
+void lstat_with_error(const char *path, struct stat *buf) {
     int res;
 
     res = lstat(path, &buf);
@@ -71,4 +71,4 @@ DIR *opendir_error_check(const char *name) {
         perror("lstat failed");
         exit(EXIT_FAILURE);
     }
-}*/
+}

@@ -68,7 +68,7 @@ void traverse_dir(char * pathname, FILE* archive_file, int VFLAG) {
     int currinode, pinode;
     char* newpath;
     struct stat sb;
-    /*char slash = '/';*/
+    char * slash = "/";
 
     if((dir = opendir(pathname))== NULL) {
         printf("Error opening directory %s\n", pathname);
@@ -93,11 +93,10 @@ void traverse_dir(char * pathname, FILE* archive_file, int VFLAG) {
                 + strlen(pdirent->d_name) +2);
             /*copy current pathname, add slash, add curr dir name*/
             strcpy(newpath, pathname);
-            strcat(newpath, "/");
+            strcat(newpath, slash);
             strcat(newpath, pdirent -> d_name);
 
             /*lstat the new path to get the filetype*/
-            /*lstat_with_error(newpath, &sb);*/
             if(lstat(newpath, &sb)==-1) {
                 perror("lstat");
                 exit(EXIT_FAILURE);
@@ -113,9 +112,6 @@ void traverse_dir(char * pathname, FILE* archive_file, int VFLAG) {
             else if (S_ISDIR(sb.st_mode)) {
                 add_dir(newpath, archive_file, sb, VFLAG);
             }
-            /*else {
-                printf("Unknown file type");
-            }*/
 
             free(newpath);
         }  
@@ -127,7 +123,7 @@ void add_dir(char * pathname, FILE * archive_file,
     struct stat sb, int VFLAG) {
         char * fullpath;
         char * header;
-        /*char slash = '/';*/
+        char * slash = "/";
         /*duplicate the current path name*/
         fullpath = strdup(pathname);
 
@@ -135,7 +131,7 @@ void add_dir(char * pathname, FILE * archive_file,
         fullpath = realloc(fullpath, strlen(pathname)+2);
 
         /*add in the slash*/
-        strcat(fullpath,"/");
+        strcat(fullpath,slash);
 
         /*generate a header for the directory based on the new full path*/
         header = create_header(fullpath, DIRECTORY, VFLAG);
@@ -160,8 +156,6 @@ char * create_header(char * pathname, int file_type, int VFLAG) {
     struct stat sb;
     HeaderPtr header;
     char * buffer;
-    /*struct passwd * uid_;
-    int errno =0;*/
 
     /*allocate mem for arr of 512 chars -> (sizeof(char)=1)*/
     buffer = (char *) calloc_error_check(BLOCK_SIZE, 1);
@@ -194,16 +188,9 @@ char * create_header(char * pathname, int file_type, int VFLAG) {
             return buffer;
         }
     }
-    /*fill in checksum*/
-    fill_header_checksum(buffer, header);
     /*now fill in everything else in the header struct*/
     strncpy(header->magic, MAGIC_VAL, MAGIC_SIZE);
     strncpy(header->version, VERSION_VAL, VERSION_SIZE);
-
-    /*uid_ = getpwuid(sb.st_uid);
-    if(!uid_) {
-        printf("Error uid: %d\n", errno);
-    }*/
 
     strcpy(header->uname, getpwuid(sb.st_uid)->pw_name);
     strcpy(header->gname, getgrgid(sb.st_gid)->gr_name);
@@ -225,6 +212,9 @@ char * create_header(char * pathname, int file_type, int VFLAG) {
     memcpy(buffer + DEVMAJOR, header->devmajor, DEVMAJOR_SIZE);
     memcpy(buffer + DEVMINOR, header->devminor, DEVMINOR_SIZE);
     memcpy(buffer + PREFIX, header->prefix, PREFIX_SIZE);
+
+    /*fill in checksum*/
+    fill_header_checksum(buffer, header);
     memcpy(buffer + CHKSUM, header->chksum, CHKSUM_SIZE);
 
     free(header);
@@ -252,20 +242,24 @@ void fill_header_name(HeaderPtr header,
 
 void split_pathname( HeaderPtr header, char *pathname) {
     int i,j;
+    
     i = strlen(pathname) - (NAME_SIZE + 1);
-    /*put what can fit into the name attribute*/
-    for(j=0; j<strlen(pathname); j++) {
-        if(pathname[i] == '/') {
-            if (NAME_SIZE >= strlen(&pathname[i+1])) {
-                strncpy(header->name, &pathname[i+1], NAME_SIZE);
+    for(j = i; j<strlen(pathname); j++) {
+        if(pathname[j] == '/') {
+            if (NAME_SIZE >= strlen(&pathname[j+1])) {
+                strncpy(header->name, &pathname[j+1], NAME_SIZE);
                 break;
             }
             return;
         }
     }
-    /*if the rest fits inside the prefix, copy it over*/
-    if (i<PREFIX_SIZE){
-        memcpy(header->prefix, pathname, i);
+    if (j<=PREFIX_SIZE){
+        if (pathname[j+1]== '/') {
+            memcpy(header->prefix, pathname, j+1);
+        }
+        else {
+            memcpy(header->prefix, pathname, j);
+        }
         return;
     }
 }
@@ -310,8 +304,6 @@ int fill_header_linkname(char * pathname,  HeaderPtr header, int VFLAG) {
         if (VFLAG) {
             printf("Linkname too long");
         }
-
-        /*free(header);*/
         return 1;
     }
     readlink(pathname, header->linkname, LINKNAME_SIZE);
@@ -324,11 +316,7 @@ void fill_header_checksum(char * buffer,  HeaderPtr header) {
     unsigned int i;
     
     for(i=0; i<BLOCK_SIZE; i++) {
-        if(i<CHKSUM) {
-            if (i<CHKSUM + CHKSUM_SIZE) {
-                checksum += (unsigned char)buffer[i];
-            }
-        }
+        checksum += (unsigned char)buffer[i];
     }
     checksum += CHKSUM_SIZE *SPACE;
     /*put result into the header file*/

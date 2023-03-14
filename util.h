@@ -96,6 +96,6 @@ void * malloc_error_check(size_t size);
 FILE * fopen_file_error_check(char * filename, char* permissions);
 void * realloc_error_check(void * ptr, size_t size);
 DIR *opendir_error_check(const char *name);
-/*void lstat_with_error(const char *path, struct stat *buf);*/
+void lstat_with_error(const char *path, struct stat *buf);
 
 #endif
