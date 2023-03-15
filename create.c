@@ -3,7 +3,7 @@
 /*create main*/
 
 int create(int argc, char *argv[], int VFLAG, int SFLAG) {
-    int i, three=3, negativeone = -1;
+    int i;
     struct stat sb;
     FILE * archive_file;
     char * write_perimission = "w+";
@@ -11,9 +11,9 @@ int create(int argc, char *argv[], int VFLAG, int SFLAG) {
     archive_file = fopen_file_error_check(argv[2], write_perimission);
 
     /*for each path name that is given, deal with it*/
-    for (i= three; i < argc; i++) {
+    for (i= 3; i < argc; i++) {
         /*use lstat to get the file type, and only continue on success*/
-        if (lstat(argv[i], &sb)!= negativeone) {
+        if (lstat(argv[i], &sb)!= -1) {
             /*if verbose, print out the current path name*/
             v_flag(sb, VFLAG, argv[i]);
             /*deal with each file type*/
@@ -37,7 +37,7 @@ int create(int argc, char *argv[], int VFLAG, int SFLAG) {
 void add_symlink_or_file(char * pathname, FILE * archive_file, 
     struct stat sb, int VFLAG) {
         char * headerbuf;
-        int file_type, one = 1;
+        int file_type;
         /*create and write the header*/
         if S_ISLNK(sb.st_mode) {
             file_type = SYMLINK;
@@ -46,7 +46,7 @@ void add_symlink_or_file(char * pathname, FILE * archive_file,
             file_type = REGFILE;
         }
         headerbuf = create_header(pathname, file_type, VFLAG);
-        fwrite(headerbuf, BLOCK_SIZE, one, archive_file);
+        fwrite(headerbuf, BLOCK_SIZE, 1, archive_file);
         /*if it's a regular file, add the data blocks too*/
 
         if(file_type == REGFILE) {
@@ -55,7 +55,7 @@ void add_symlink_or_file(char * pathname, FILE * archive_file,
 
         /*if v option is set, insert a new line*/
 
-        if(VFLAG == one) {
+        if(VFLAG == 1) {
             printf("\n");
         }
 
