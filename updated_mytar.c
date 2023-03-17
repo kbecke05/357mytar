@@ -76,11 +76,9 @@ int main(int argc, char * argv[]) {
     }
 
     if(argc == 3)
-      list_files(fd, VFLAG, "", 0, 0);
+      iterate_arch(fd, VFLAG, argv, argc, 0, 0, SFLAG);
     else if(argc > 3){
-      for(i = 3; i < argc; i++){
-        list_files(fd, VFLAG, argv[i], 1, 0);
-      }
+      iterate_arch(fd, VFLAG, argv, argc, 1, 0, SFLAG);
     }
     /*contents(argc, argv, VFLAG, SFLAG);*/
   }
@@ -92,11 +90,9 @@ int main(int argc, char * argv[]) {
       exit(EXIT_FAILURE);
     }
     if(argc == 3)
-      list_files(fd, VFLAG, "", 0, 1);
+      iterate_arch(fd, VFLAG, argv, argc, 0, 1, SFLAG);
     else if(argc > 3){
-      for(i = 3; i < argc; i++){
-        list_files(fd, VFLAG, argv[i], 1, 1);
-      }
+      iterate_arch(fd, VFLAG, argv, argc, 1, 1, SFLAG);
     }
   }
 
