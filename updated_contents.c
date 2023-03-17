@@ -14,6 +14,16 @@
 #define ONE_BYTE 1
 #define MTIME_WIDTH 18
 
+int check_version(int fd, unsigned offset){
+    char version[VERSION_SIZE];
+    lseek(fd, offset + VERSION, SEEK_SET);
+    read(fd, version, VERSION_SIZE);
+    if(!strcmp("00", version))
+        return 0;
+    else 
+        return -1;
+}
+
 void extract_data(int arch_fd, unsigned offset, int out_fd, 
                 unsigned num_blocks){
     unsigned i;
@@ -74,6 +84,7 @@ int is_prefix(char *pref, char *full){
 
 char *get_mtime(int fd, unsigned offset){
     char *mtime = (char *)malloc(MTIME_SIZE);
+    
     lseek(fd, offset + MTIME, SEEK_SET);
     read(fd, mtime, MTIME_SIZE);
     return mtime;
@@ -201,25 +212,30 @@ void write_permissions(char mode[], int fd, unsigned offset){
     
 }
 
-void list_files(int fd, int vflag, char *given, 
-                int specific, int extract){
-    int read_val, xfd, prefix;
+void iterate_arch(int fd, int vflag, char *args[], int num_args,
+                int specific, int extract, int sflag){
+    int read_val, xfd, prefix, i, version;
     long int size;
     unsigned num_blocks, offset;
     char *name;
     char *pref_str;
     char *mtime_str;
+    char *xname;
     char mode[MODE_SIZE];
     char type;
     struct utimbuf times;
-    char *xname;
     time_t mtime_num;
-    /*struct stat stat_buf;*/
+
+    offset = 0; 
+    if(sflag){
+        while((version = check_version(fd, offset)) == -1){
+            offset += BLOCK_SIZE;
+        }
+    }
 
     name = (char *)malloc(NAME_SIZE);
 
     prefix = 1;
-    offset = 0;
     while((read_val = read(fd, name, NAME_SIZE)) > 0){
         if(!strlen(name)){
             break;
@@ -231,10 +247,20 @@ void list_files(int fd, int vflag, char *given,
         size = get_size(fd, offset);
         type = get_type(fd, offset);
         if(specific){
-            if(strlen(pref_str))
-                prefix = is_prefix(given, pref_str);
-            else
-                prefix = is_prefix(given, name);
+            if(strlen(pref_str)){
+                for(i = 3; i < num_args; i++){
+                    prefix = is_prefix(args[i], pref_str);
+                    if(prefix)
+                        break;
+                }
+            }
+            else{
+                for(i = 3; i < num_args; i++){
+                    prefix = is_prefix(args[i], name);
+                    if(prefix)
+                        break;
+                }
+            }
         }
         if(vflag && prefix && !extract){
             lseek(fd, offset + MODE, SEEK_SET);
@@ -249,16 +275,19 @@ void list_files(int fd, int vflag, char *given,
                 if(strlen(pref_str)){
                     printf("%s\n", pref_str);
                 }
-                else
+                else{
                     printf("%s\n", name);
+                }
             }
         }
         if(type == '0' || type == '\0'){ 
+
+            
             mtime_str = get_mtime(fd, offset);
             mtime_num = (time_t)strtol(get_mtime(fd, offset), 
                         NULL, BASE8);
             free(mtime_str);
-            if((size != 0) && ((size % BLOCK_SIZE) == 0))
+            if((size % BLOCK_SIZE) == 0)
                 num_blocks = (size / BLOCK_SIZE);
             else
                 num_blocks = (size / BLOCK_SIZE) + 1;
@@ -272,10 +301,8 @@ void list_files(int fd, int vflag, char *given,
                 S_IRUSR | S_IWUSR);
                 times.modtime = mtime_num;
                 utime(xname, &times);
-                /*free(xname);*/
-                /*stat(xname, &stat_buf);
-                printf("restored modtime: %o\n", stat_buf.st_mtime);*/
                 extract_data(fd, offset, xfd, num_blocks);
+                free(xname);
             }
             offset += (num_blocks * BLOCK_SIZE);
         }
